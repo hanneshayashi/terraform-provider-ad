@@ -70,6 +70,16 @@ func resourceADGroup() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "The distinguished name of the user or group that is assigned to manage this object.",
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					dn := d.Get("distinguished_name").(string)
+					if new == "_self_" && old == dn && dn != "" {
+						return true
+					}
+					if strings.EqualFold(old, new) {
+						return true
+					}
+					return false
+				},
 			},
 			"distinguished_name": {
 				Type:        schema.TypeString,
@@ -98,11 +108,21 @@ func resourceADGroupCreate(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
+	var managedBySelf bool
+	if g.ManagedBy == "_self_" {
+		managedBySelf = true
+		g.ManagedBy = ""
+	}
 	guid, err := g.AddGroup(meta.(*config.ProviderConf))
 	if err != nil {
 		return err
 	}
 	d.SetId(guid)
+	if managedBySelf {
+		resourceADGroupRead(d, meta)
+		d.Set("managed_by", "_self_")
+		return resourceADGroupUpdate(d, meta)
+	}
 	return resourceADGroupRead(d, meta)
 }
 

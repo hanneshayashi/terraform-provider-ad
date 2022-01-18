@@ -101,6 +101,8 @@ func (g *Group) ModifyGroup(d *schema.ResourceData, conf *config.ProviderConf) e
 			value := SanitiseTFInput(d, k)
 			if value == "" {
 				value = "$null"
+			} else if k == "managed_by" && value == "_self_" {
+				value = fmt.Sprintf(`"%s"`, d.Get("distinguished_name").(string))
 			} else {
 				value = fmt.Sprintf(`"%s"`, value)
 			}
